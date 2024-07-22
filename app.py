@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 
 def get_api_key():
-    return st.text_input("Enter your OpenAI API key:", type="password")
+    return st.text_input("Enter your OpenAI API key:", type="password").strip()
 
 def stream_openai_response(api_key):
     client = OpenAI(api_key=api_key)
