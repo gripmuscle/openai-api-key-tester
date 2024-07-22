@@ -6,18 +6,13 @@ import re
 import os
 import openai
 import logging
-import toml
-
-# Load TOML configuration
-config = toml.load('.env.toml')
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Constants
-GITHUB_TOKEN = config['GITHUB']['TOKEN']
-OPENAI_API_KEY = config['OPENAI']['API_KEY']
+GITHUB_TOKEN = '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'
 GITHUB_API_URL = 'https://api.github.com/search/code'
 OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
 
