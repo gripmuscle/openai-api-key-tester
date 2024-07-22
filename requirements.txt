@@ -3,4 +3,4 @@ requests
 aiohttp
 openai
 python-dotenv
-beautifulsoap4
+beautifulsoup4
