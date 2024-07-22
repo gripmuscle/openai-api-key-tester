@@ -3,6 +3,8 @@ import re
 import aiohttp
 import asyncio
 import logging
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -51,11 +53,15 @@ async def test_key_async(session, api_key):
         logging.error(f"An error occurred while testing key {api_key}: {e}")
         return api_key, False
 
-# Function to handle OpenAI key testing asynchronously
-async def test_keys_async(keys):
+# Function to handle OpenAI key testing asynchronously with a progress bar
+async def test_keys_async(keys, progress_callback):
     async with aiohttp.ClientSession() as session:
         tasks = [test_key_async(session, key) for key in keys]
-        results = await asyncio.gather(*tasks)
+        results = []
+        for i, task in enumerate(asyncio.as_completed(tasks)):
+            result = await task
+            results.append(result)
+            progress_callback(i + 1)
         return results
 
 # Streamlit UI
@@ -64,7 +70,7 @@ st.title("API Key Extractor and Tester")
 # User input for text
 input_text = st.text_area("Input Text", height=300, help="Paste the text from which to extract API keys.")
 
-if st.button("Extract and Test Keys"):
+if st.button("Extract Keys"):
     if not input_text:
         st.error("Input text is required.")
     else:
@@ -75,27 +81,42 @@ if st.button("Extract and Test Keys"):
             if extracted_keys:
                 st.success("Keys extracted successfully!")
                 st.write("Found potential API keys:")
-                
-                with st.spinner('Testing API keys...'):
-                    results = asyncio.run(test_keys_async(extracted_keys))
-                    
-                    valid_keys = []
-                    invalid_keys = []
-                    
-                    for key, valid in results:
-                        if valid:
-                            valid_keys.append(key)
-                            st.write(f"{key} - **Valid**")
-                        else:
-                            st.write(f"{key} - **Invalid**")
-                            
-                    if valid_keys:
-                        st.subheader("Valid API Keys")
-                        st.text_area("Copy all valid keys", "\n".join(valid_keys), height=200)
-                    else:
-                        st.write("No valid API keys found.")
-                    
-                    logging.info("Results displayed.")
+                for key in extracted_keys:
+                    st.write(key)
+                # Store the extracted keys in session state for later testing
+                st.session_state['extracted_keys'] = extracted_keys
             else:
                 st.write("No potential keys found.")
                 logging.info("No potential keys found in the provided text.")
+
+# Button for testing keys
+if 'extracted_keys' in st.session_state and st.session_state['extracted_keys']:
+    if st.button("Test Keys"):
+        extracted_keys = st.session_state['extracted_keys']
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        def progress_callback(count):
+            progress_bar.progress(count / len(extracted_keys))
+
+        with st.spinner('Testing API keys...'):
+            results = asyncio.run(test_keys_async(extracted_keys, progress_callback))
+            
+            valid_keys = []
+            invalid_keys = []
+            
+            for key, valid in results:
+                if valid:
+                    valid_keys.append(key)
+                    st.write(f"{key} - **Valid**")
+                else:
+                    st.write(f"{key} - **Invalid**")
+                    
+            if valid_keys:
+                st.subheader("Valid API Keys")
+                st.text_area("Copy all valid keys", "\n".join(valid_keys), height=200)
+            else:
+                st.write("No valid API keys found.")
+            
+            logging.info("Results displayed.")
