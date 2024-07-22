@@ -15,7 +15,7 @@ def test_api_key(api_key):
         return "Invalid", "Invalid API key."
     except openai.error.APIConnectionError:
         return "Connection Error", "Failed to connect to the API."
-    except openai.error.APIError as e:
+    except openai.error.OpenAIError as e:
         return "API Error", f"API error: {e}"
     except Exception as e:
         return "Unexpected Error", f"An unexpected error occurred: {e}"
