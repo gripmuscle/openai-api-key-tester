@@ -1,6 +1,7 @@
 streamlit
 requests
 aiohttp
+tqdm
 openai
 python-dotenv
 beautifulsoup4
