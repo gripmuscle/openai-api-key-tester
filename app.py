@@ -2,20 +2,33 @@ import streamlit as st
 import re
 import aiohttp
 import asyncio
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Function to extract keys from text using regex
 def extract_keys(text):
+    logging.info("Extracting API keys from the provided text.")
+    
     # Regex patterns for various API keys
     patterns = [
-        r'(?i)(?:api[_ ]?key|access[_ ]?key|secret[_ ]?key|access[_ ]?token|api[_ ]?key|apikey|api[_ ]?secret|app[_ ]?secret|auth[_ ]?token|authsecret)[\s=:]*([\w-]{32,})',
-        r'(?i)sk-[a-zA-Z0-9]{48}',
-        r'(?i)key-[a-zA-Z0-9]{32,}',
+        r'(?i)api[_ ]?key[\s=:]*([\w-]{32,})',
+        r'(?i)access[_ ]?key[\s=:]*([\w-]{32,})',
+        r'(?i)secret[_ ]?key[\s=:]*([\w-]{32,})',
+        r'(?i)access[_ ]?token[\s=:]*([\w-]{32,})',
+        r'(?i)apikey[\s=:]*([\w-]{32,})',
         r'(?i)api[_ ]?secret[\s=:]*([\w-]{32,})',
-        r'(?i)(?:app[_ ]?key|application[_ ]?key|app[_ ]?id|application[_ ]?id)[\s=:]*([\w-]{32,})'
+        r'(?i)app[_ ]?secret[\s=:]*([\w-]{32,})',
+        r'(?i)auth[_ ]?token[\s=:]*([\w-]{32,})',
+        r'(?i)authsecret[\s=:]*([\w-]{32,})',
+        r'sk-[a-zA-Z0-9]{48}',  # Adjusted regex pattern for sk-<key>
+        r'key-[a-zA-Z0-9]{32,}'
     ]
     keys = set()
     for pattern in patterns:
         keys.update(re.findall(pattern, text))
+    logging.info(f"Extracted keys: {keys}")
     return keys
 
 # Function to test OpenAI keys
@@ -29,13 +42,14 @@ async def test_key_async(session, api_key):
     try:
         async with session.post(url, headers=headers, json=data) as response:
             if response.status == 200:
-                result = await response.json()
-                return api_key, result
+                logging.info(f"API key {api_key} is valid.")
+                return api_key, True
             else:
-                return api_key, None
+                logging.warning(f"API key {api_key} is invalid.")
+                return api_key, False
     except Exception as e:
-        st.error(f"An error occurred while testing key: {e}")
-        return api_key, None
+        logging.error(f"An error occurred while testing key {api_key}: {e}")
+        return api_key, False
 
 # Function to handle OpenAI key testing asynchronously
 async def test_keys_async(keys):
@@ -54,20 +68,34 @@ if st.button("Extract and Test Keys"):
     if not input_text:
         st.error("Input text is required.")
     else:
-        # Extract API keys from the provided text
-        extracted_keys = extract_keys(input_text)
-        
-        if extracted_keys:
-            st.write("Found potential API keys:")
-            st.write(extracted_keys)
+        with st.spinner('Extracting API keys...'):
+            # Extract API keys from the provided text
+            extracted_keys = extract_keys(input_text)
             
-            with st.spinner("Testing OpenAI keys..."):
-                # Test extracted keys asynchronously
-                results = asyncio.run(test_keys_async(extracted_keys))
-                for key, result in results:
-                    if result:
-                        st.write(f"API key {key} is valid.")
+            if extracted_keys:
+                st.success("Keys extracted successfully!")
+                st.write("Found potential API keys:")
+                
+                with st.spinner('Testing API keys...'):
+                    results = asyncio.run(test_keys_async(extracted_keys))
+                    
+                    valid_keys = []
+                    invalid_keys = []
+                    
+                    for key, valid in results:
+                        if valid:
+                            valid_keys.append(key)
+                            st.write(f"{key} - **Valid**")
+                        else:
+                            st.write(f"{key} - **Invalid**")
+                            
+                    if valid_keys:
+                        st.subheader("Valid API Keys")
+                        st.text_area("Copy all valid keys", "\n".join(valid_keys), height=200)
                     else:
-                        st.write(f"API key {key} is invalid.")
-        else:
-            st.write("No potential keys found.")
+                        st.write("No valid API keys found.")
+                    
+                    logging.info("Results displayed.")
+            else:
+                st.write("No potential keys found.")
+                logging.info("No potential keys found in the provided text.")
