@@ -6,20 +6,23 @@ import re
 import os
 import openai
 import logging
-from dotenv import load_dotenv
+import toml
 
-# Load environment variables
-load_dotenv()
+# Load TOML configuration
+config = toml.load('.env.toml')
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Constants
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+GITHUB_TOKEN = config['GITHUB']['TOKEN']
+OPENAI_API_KEY = config['OPENAI']['API_KEY']
 GITHUB_API_URL = 'https://api.github.com/search/code'
 OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
+
+logger.info(f"GitHub Token: {GITHUB_TOKEN}")
+logger.info(f"OpenAI API Key: {OPENAI_API_KEY}")
 
 # Default search query
 DEFAULT_SEARCH_QUERY = """
