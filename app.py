@@ -3,8 +3,8 @@ import re
 import aiohttp
 import asyncio
 import logging
-import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -62,7 +62,25 @@ async def test_keys_async(keys, progress_callback):
             result = await task
             results.append(result)
             progress_callback(i + 1)
+            # Anti-ban measure: add a delay between requests
+            await asyncio.sleep(1)  # Adjust delay as needed
         return results
+
+# Function to test keys using threading
+def test_keys_threaded(keys, progress_callback):
+    results = []
+    
+    def worker(key):
+        result = asyncio.run(test_key_async(aiohttp.ClientSession(), key))
+        results.append(result)
+        progress_callback(len(results))
+
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(worker, key) for key in keys]
+        for future in as_completed(futures):
+            future.result()  # Wait for each thread to complete
+
+    return results
 
 # Streamlit UI
 st.title("API Key Extractor and Tester")
@@ -101,7 +119,8 @@ if 'extracted_keys' in st.session_state and st.session_state['extracted_keys']:
             progress_bar.progress(count / len(extracted_keys))
 
         with st.spinner('Testing API keys...'):
-            results = asyncio.run(test_keys_async(extracted_keys, progress_callback))
+            # Testing keys using threading
+            results = test_keys_threaded(extracted_keys, progress_callback)
             
             valid_keys = []
             invalid_keys = []
@@ -120,3 +139,4 @@ if 'extracted_keys' in st.session_state and st.session_state['extracted_keys']:
                 st.write("No valid API keys found.")
             
             logging.info("Results displayed.")
+
