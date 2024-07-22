@@ -17,7 +17,6 @@ GITHUB_API_URL = 'https://api.github.com/search/code'
 OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
 
 logger.info(f"GitHub Token: {GITHUB_TOKEN}")
-logger.info(f"OpenAI API Key: {OPENAI_API_KEY}")
 
 # Default search query
 DEFAULT_SEARCH_QUERY = """
